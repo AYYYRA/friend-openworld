@@ -1,0 +1,1828 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#9f9f9f" />
+    <meta name="description" content="openworld" />
+    <title>openworld</title>
+    <style>
+:root {
+  color-scheme: light;
+  --paper: #ffffff;
+  --backdrop: #9f9f9f;
+  --ink: #171717;
+  --muted: #666666;
+  --faint: #d8d8d8;
+  --focus: #171717;
+  --ease: cubic-bezier(0.22, 0.75, 0.25, 1);
+  font-family: "HarmonyOS Sans SC", "HarmonyOS Sans", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--backdrop);
+}
+
+body {
+  min-height: 100svh;
+  margin: 0;
+  overflow: hidden;
+  background: var(--backdrop);
+  color: var(--ink);
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+button,
+a,
+[tabindex] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font: inherit;
+}
+
+.site-shell {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px 25px;
+  overflow: hidden;
+}
+
+.stage-frame {
+  position: relative;
+  flex: 0 0 auto;
+  width: 990px;
+  height: 620px;
+}
+
+.stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 990px;
+  height: 620px;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--paper);
+  box-shadow: var(--paper-shadow, 0 20px 42px rgba(0, 0, 0, 0.18));
+  transform-origin: top left;
+}
+
+.stage > .language-hotspot,
+.stage > .content-zone,
+.stage > .nav-zone {
+  opacity: 1;
+  transition: opacity 620ms ease;
+}
+
+.stage.intro-active > :not(.intro-screen) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.stage.intro-leaving > .content-zone {
+  transition-delay: 100ms;
+}
+
+.stage.intro-leaving > .nav-zone {
+  transition-delay: 180ms;
+}
+
+.stage.intro-leaving > .language-hotspot {
+  transition-delay: 240ms;
+}
+
+.intro-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  opacity: 1;
+  transition: opacity 1140ms ease;
+}
+
+.intro-screen.is-dismissed {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro-mark {
+  position: relative;
+  width: 230px;
+  height: 145px;
+  /* The prototype places the mark slightly above the frame's optical center. */
+  transform: translateY(-38px);
+  opacity: 1;
+  transition: opacity 460ms ease, transform 620ms var(--ease);
+}
+
+.intro-screen.is-dismissed .intro-mark {
+  opacity: 0;
+  transform: translateY(-45px);
+}
+
+.intro-arc {
+  position: absolute;
+  inset: 0;
+  width: 230px;
+  height: 145px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.intro-arc__left,
+.intro-arc__right {
+  opacity: 0;
+  fill: none;
+  stroke: white;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 14px;
+  animation: intro-arc-draw 2475ms var(--ease) 1120ms forwards;
+}
+
+.intro-logo {
+  display: block;
+  width: 230px;
+  height: 145px;
+  object-fit: contain;
+  opacity: 0;
+  /* The lower crop is the same source image, so the completed mark never changes geometry. */
+  clip-path: inset(98px 0 0 0);
+  animation: intro-wordmark-reveal 780ms ease 3640ms forwards;
+}
+
+.intro-hint {
+  position: absolute;
+  bottom: 8.5%;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.team-scene {
+  position: relative;
+  width: 740px;
+  height: 360px;
+  margin: 0 auto;
+}
+
+.team-roster {
+  position: absolute;
+  inset: 0;
+  width: 620px;
+  height: 360px;
+  margin: auto;
+}
+
+.team-orbit {
+  position: absolute;
+  inset: 0;
+  transform: rotate(var(--orbit-angle, 0deg));
+  transform-origin: center;
+}
+
+.team-member {
+  position: absolute;
+  width: max-content;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 300;
+  line-height: 1.1;
+  transform: translate(-50%, -50%) rotate(var(--counter-angle, 0deg));
+  transition: opacity 520ms ease, color 180ms ease;
+}
+
+.team-member > span {
+  display: block;
+  transition: transform 180ms ease;
+}
+
+.team-scene.is-opening .team-member:not(.team-member--selected),
+.team-scene.is-closing:not(.is-returning) .team-member:not(.team-member--selected) {
+  opacity: 0;
+}
+
+.team-scene.is-closing:not(.is-returning) .team-member:not(.team-member--selected) {
+  /* Establish the hidden baseline before the reverse fade is enabled. */
+  transition: none;
+}
+
+.team-scene.is-detail .team-roster {
+  visibility: hidden;
+}
+
+.team-scene.is-opening .team-member,
+.team-scene.is-closing .team-member {
+  pointer-events: none;
+}
+
+.team-scene:not(.is-opening):not(.is-closing) .team-member:hover,
+.team-scene:not(.is-opening):not(.is-closing) .team-member:focus-visible {
+  color: #000;
+}
+
+.team-scene:not(.is-opening):not(.is-closing) .team-member:hover > span,
+.team-scene:not(.is-opening):not(.is-closing) .team-member:focus-visible > span {
+  transform: scale(1.08);
+}
+
+.team-member:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.member-detail {
+  display: grid;
+  justify-items: center;
+  gap: 15px;
+  max-width: 670px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.team-detail-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.team-detail-layer.is-mounted {
+  visibility: visible;
+}
+
+.team-detail-layer .member-detail {
+  width: 670px;
+}
+
+.team-name-flight {
+  position: absolute;
+  z-index: 7;
+  width: max-content;
+  margin: 0;
+  color: var(--ink);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transform-origin: center;
+  will-change: left, top, font-size, letter-spacing;
+}
+
+.member-detail__role {
+  margin: -2px 0 4px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.4;
+  opacity: 0;
+  transform: translateY(7px);
+  transition: opacity 420ms ease, transform 520ms var(--ease);
+}
+
+.member-detail__lines {
+  display: grid;
+  gap: 5px;
+  max-width: 620px;
+}
+
+.member-detail__lines p {
+  margin: 0;
+  color: #4b4b4b;
+  font-size: 18px;
+  line-height: 1.5;
+  opacity: 0;
+  transform: translateY(7px);
+  transition: opacity 420ms ease, transform 520ms var(--ease);
+}
+
+.team-detail-layer.is-revealed .member-detail__role,
+.team-detail-layer.is-revealed .member-detail__lines p {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.team-detail-layer.is-revealed .member-detail__role { transition-delay: 60ms; }
+.team-detail-layer.is-revealed .member-detail__lines p:nth-child(1) { transition-delay: 100ms; }
+.team-detail-layer.is-revealed .member-detail__lines p:nth-child(2) { transition-delay: 160ms; }
+.team-detail-layer.is-revealed .member-detail__lines p:nth-child(3) { transition-delay: 220ms; }
+.team-detail-layer.is-revealed .member-detail__lines p:nth-child(4) { transition-delay: 280ms; }
+
+.content-zone {
+  position: relative;
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  place-items: center;
+  padding: 72px 80px 32px;
+  outline: none;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.content-zone:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+.content-view {
+  position: relative;
+  top: -28px;
+  width: min(100%, 740px);
+  text-align: center;
+  animation: content-in 780ms var(--ease) both;
+}
+
+.content-view--ideal {
+  top: -60px;
+}
+
+.content-view--team {
+  top: -54px;
+}
+
+.content-view.is-exiting {
+  animation: content-out 180ms ease both;
+}
+
+.manifesto {
+  display: grid;
+  gap: 0.08em;
+  max-width: 720px;
+  margin: 0 auto;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.22;
+  letter-spacing: 0.01em;
+}
+
+.manifesto p {
+  margin: 0;
+}
+
+.manifesto--english {
+  max-width: 710px;
+  gap: 0.06em;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.slide {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  max-width: 660px;
+  margin: 0 auto;
+}
+
+.slide__eyebrow {
+  display: none;
+}
+
+.slide__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 300;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+
+.content-zone::before,
+.content-zone::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 54px;
+  pointer-events: none;
+}
+
+.content-zone::before {
+  top: 0;
+  background: linear-gradient(to bottom, #fff 0%, rgba(255, 255, 255, 0.92) 42%, rgba(255, 255, 255, 0) 100%);
+}
+
+.content-zone::after {
+  bottom: 0;
+  background: linear-gradient(to top, #fff 0%, rgba(255, 255, 255, 0.92) 42%, rgba(255, 255, 255, 0) 100%);
+}
+
+.product-download {
+  display: grid;
+  gap: 30px;
+  justify-items: center;
+  margin-top: 38px;
+}
+
+.product-download__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 300;
+}
+
+.product-download__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 54px;
+}
+
+.product-download__links a {
+  color: #777;
+  font-size: 19px;
+  font-weight: 200;
+  text-decoration: none;
+  transition: color 840ms ease;
+}
+
+.product-download__links a:hover,
+.product-download__links a:focus-visible {
+  color: #111;
+}
+
+.contact-status {
+  margin-top: 20px;
+  color: #777;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 840ms ease;
+}
+
+.contact-status.is-visible {
+  opacity: 1;
+}
+
+.slide__body {
+  max-width: 610px;
+  margin: 0;
+  color: #4b4b4b;
+  font-size: 18px;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.slide__body em {
+  color: var(--ink);
+  font-style: normal;
+}
+
+.slide__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 28px;
+  margin-top: 7px;
+}
+
+.slide__link {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-decoration-color: #b7b7b7;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+  transition: color 180ms ease, text-decoration-color 180ms ease;
+}
+
+.slide__link:hover,
+.slide__link:focus-visible {
+  color: #000;
+  text-decoration-color: var(--ink);
+}
+
+.contact-canvas {
+  position: relative;
+  width: min(100%, 520px);
+  min-height: 170px;
+  margin: 0 auto;
+  padding: 71px 0;
+  outline: none;
+  caret-color: transparent;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.5;
+  text-align: center;
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.contact-canvas::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  width: 1px;
+  height: 1.15em;
+  background: var(--ink);
+  transform: translate(-50%, -50%);
+  animation: caret-blink 1.05s step-end infinite;
+}
+
+.contact-canvas--has-input {
+  caret-color: var(--ink);
+}
+
+.contact-canvas--has-input::after {
+  display: none;
+}
+
+.nav-zone {
+  flex: 0 0 22%;
+  min-height: 112px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 80px 72px;
+}
+
+.nav-track {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 48px;
+  overflow: visible;
+  scrollbar-width: none;
+}
+
+.nav-track::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-link {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: max-content;
+  padding: 8px 0 11px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 21px;
+  font-weight: 200;
+  letter-spacing: 0;
+  line-height: 1;
+  transform: translateX(calc(-50% + var(--shift))) translateY(var(--lift)) scale(var(--scale));
+  transform-origin: center bottom;
+  opacity: var(--opacity);
+  transition: color 840ms ease;
+}
+
+.nav-link--edge-fade {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.nav-link--repositioning {
+  transition: none !important;
+}
+
+.nav-track--instant .nav-link {
+  transition: none;
+}
+
+.nav-link:hover,
+.nav-link:focus-visible,
+.nav-link[aria-current="page"] {
+  color: var(--ink);
+}
+
+.nav-link[aria-current="page"] {
+  color: var(--ink);
+}
+
+.nav-link:focus-visible,
+.language-button:focus-visible,
+.language-hotspot:focus-visible,
+.slide__link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 5px;
+}
+
+.language-hotspot {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  right: 0;
+  width: 98px;
+  height: 78px;
+  outline: none;
+}
+
+.language-control {
+  position: absolute;
+  top: 30px;
+  right: 40px;
+  transition: opacity 250ms ease, transform 250ms var(--ease);
+}
+
+.language-control.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-5px);
+}
+
+.language-control.is-revealed {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.language-button {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes content-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes content-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  46%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes intro-arc-draw {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 1;
+  }
+  2% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes intro-wordmark-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes detail-line-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+    </style>
+</head>
+  <body>
+    <main class="site-shell" aria-label="openworld">
+      <div class="stage-frame" id="stage-frame">
+        <div class="stage" id="stage">
+          <section class="intro-screen" id="intro-screen" aria-label="openworld 开场动画">
+            <div class="intro-mark" aria-hidden="true">
+              <svg class="intro-arc" viewBox="0 0 230 145" focusable="false">
+                <defs>
+                  <mask id="intro-arc-mask" x="0" y="0" width="230" height="145" maskUnits="userSpaceOnUse">
+                    <rect width="230" height="145" fill="black" />
+                    <path class="intro-arc__left" pathLength="1" d="M115 15 A100 100 0 0 0 15 104 L15 124" />
+                    <path class="intro-arc__right" pathLength="1" d="M115 15 A100 100 0 0 1 215 104 L215 124" />
+                  </mask>
+                </defs>
+                <image href="data:image/png;base64,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" width="230" height="145" mask="url(#intro-arc-mask)" />
+              </svg>
+              <img class="intro-logo" src="data:image/png;base64,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" alt="" />
+            </div>
+            <p class="intro-hint sr-only" id="intro-hint">等待你的输入</p>
+          </section>
+          <div class="language-hotspot" id="language-hotspot" tabindex="0" role="button" aria-label="显示语言切换">
+            <div class="language-control" id="language-control">
+              <button class="language-button" id="language-button" type="button" aria-label="切换到 English">CH</button>
+            </div>
+          </div>
+
+          <section class="content-zone" id="content-zone" tabindex="0" aria-label="内容区">
+            <div class="content-view" id="content-view" aria-live="polite"></div>
+          </section>
+
+          <nav class="nav-zone" id="nav-zone" aria-label="栏目导航">
+            <div class="nav-track" id="nav-track"></div>
+          </nav>
+
+          <p class="sr-only" id="interaction-hint">使用滚轮或上下方向键探索内容，点击底部标题切换栏目。</p>
+        </div>
+      </div>
+    </main>
+    <script>
+(function () {
+  "use strict";
+
+  const contentZone = document.querySelector("#content-zone");
+  let contentView = document.querySelector("#content-view");
+  const navZone = document.querySelector("#nav-zone");
+  const navTrack = document.querySelector("#nav-track");
+  const stage = document.querySelector("#stage");
+  const stageFrame = document.querySelector("#stage-frame");
+  const introScreen = document.querySelector("#intro-screen");
+  const introHint = document.querySelector("#intro-hint");
+  const languageButton = document.querySelector("#language-button");
+  const languageControl = document.querySelector("#language-control");
+  const languageHotspot = document.querySelector("#language-hotspot");
+
+  const sections = ["learn-more", "work", "team", "ideal", "contact"];
+  const sectionLabels = {
+    zh: {
+      "learn-more": "了解更多",
+      work: "我们的工作",
+      ideal: "我们的愿景",
+      team: "我们的团队",
+      contact: "联系我们"
+    },
+    en: {
+      "learn-more": "learn more",
+      work: "our work",
+      ideal: "our ideal",
+      team: "our team",
+      contact: "contact us"
+    }
+  };
+
+  const copy = {
+    zh: {
+      pageTitle: "openworld",
+      languageButton: "CH",
+      languageAria: "切换到 English",
+      ui: {
+        mainAria: "openworld",
+        introAria: "openworld 开场动画",
+        languageHotspotAria: "显示语言切换",
+        contentAria: "内容区",
+        navAria: "栏目导航",
+        interactionHint: "使用滚轮或上下方向键探索内容，点击底部标题切换栏目。",
+        introHint: "等待你的输入"
+      },
+      idealStatement: [
+        "我们是一支全清华团队，致力于改变世界",
+        "我们的理想主义就是我们最大的武器",
+        "我们要把数据和选择的权力",
+        "从公司的手上还给个人"
+      ],
+      workScenario: [
+        "想象这样一个场景：",
+        "清晨醒来，窗帘缓缓拉开。",
+        "晨光洒进房间，水壶发出鸣响。",
+        "你的电脑已经替你处理好了琐事——",
+        "只有重要的决定等待你确认。",
+        "它们都知道你在想什么。",
+        "智能设备是你的延伸。",
+        "我们捍卫每个人的数据，",
+        "视其为不可侵犯的财产。"
+      ],
+      slides: {
+        "learn-more": [
+          { links: [{ label: "GitHub", href: "https://github.com/" }] }
+        ],
+        work: [
+          { type: "work-scenario" },
+          { title: "技术" },
+          { title: "下载", links: [{ label: "下载", href: "data:text/plain;base64,Q0xFQU4gU0xBVEUKCldlIGJlbGlldmUgdGVjaG5vbG9neSBzaG91bGQgcmV0dXJuIGNob2ljZSB0byB0aGUgcGVyc29uIHVzaW5nIGl0LgpQcml2YWN5IGlzIG5vdCBhIHNldHRpbmcgdG8gZGlzY292ZXIgbGF0ZXIuIEl0IGlzIHRoZSBzdGFydGluZyBwb2ludC4KCuaIkeS7rOebuOS/oe+8jOaKgOacr+W6lOivpeaKiumAieaLqeadg+i/mOe7meS9v+eUqOWug+eahOS6uuOAggrpmpDnp4HkuI3mmK/kuovlkI7miY3lj5HnjrDnmoTorr7nva7vvIzogIzmmK/kuIDliIfnmoTotbfngrnjgIIK", download: "manifesto.txt" }] }
+        ],
+        ideal: [
+          { type: "ideal-statement" },
+          { title: "对AI的看法" },
+          { title: "未来预测" }
+        ],
+        team: [],
+        contact: [{ type: "contact" }]
+      },
+      contactAria: "联系区域，可直接输入"
+    },
+    en: {
+      pageTitle: "openworld",
+      languageButton: "EN",
+      languageAria: "Switch to Chinese",
+      ui: {
+        mainAria: "openworld",
+        introAria: "openworld opening animation",
+        languageHotspotAria: "Show language switch",
+        contentAria: "Content area",
+        navAria: "Section navigation",
+        interactionHint: "Use the wheel or arrow keys to explore; click a title below to change sections.",
+        introHint: "Waiting for input"
+      },
+      idealStatement: [
+        "We are an all-Tsinghua team, committed to changing the world.",
+        "Our idealism is our greatest weapon.",
+        "We want to return control over data and choices",
+        "from companies to individuals."
+      ],
+      workScenario: [
+        "Imagine this scenario:",
+        "You wake up in the morning, and the curtains slowly open.",
+        "Morning light spills into the room, the kettle whistles.",
+        "Your computer has already taken care of the trivial matters—",
+        "only the important decisions await your confirmation.",
+        "They all know what you’re thinking.",
+        "Smart devices are an extension of you.",
+        "We defend everyone’s data",
+        "as inviolable property."
+      ],
+      slides: {
+        "learn-more": [
+          { links: [{ label: "GitHub", href: "https://github.com/" }] }
+        ],
+        work: [
+          { type: "work-scenario" },
+          { title: "technology" },
+          { title: "download", links: [{ label: "download", href: "data:text/plain;base64,Q0xFQU4gU0xBVEUKCldlIGJlbGlldmUgdGVjaG5vbG9neSBzaG91bGQgcmV0dXJuIGNob2ljZSB0byB0aGUgcGVyc29uIHVzaW5nIGl0LgpQcml2YWN5IGlzIG5vdCBhIHNldHRpbmcgdG8gZGlzY292ZXIgbGF0ZXIuIEl0IGlzIHRoZSBzdGFydGluZyBwb2ludC4KCuaIkeS7rOebuOS/oe+8jOaKgOacr+W6lOivpeaKiumAieaLqeadg+i/mOe7meS9v+eUqOWug+eahOS6uuOAggrpmpDnp4HkuI3mmK/kuovlkI7miY3lj5HnjrDnmoTorr7nva7vvIzogIzmmK/kuIDliIfnmoTotbfngrnjgIIK", download: "manifesto.txt" }] }
+        ],
+        ideal: [
+          { type: "ideal-statement" },
+          { title: "our views on AI" },
+          { title: "future forecast" }
+        ],
+        team: [],
+        contact: [{ type: "contact" }]
+      },
+      contactAria: "Contact area, ready for direct input"
+    }
+  };
+
+  const teamMembers = {
+    zh: [
+      { name: "武善征", role: "CEO与创始人", lines: ["清华大学航空航天学院硕士", "多模态人机交互方向，清华创客空间协会主席", "让普通人也能吃上AI的蛋糕"] },
+      { name: "徐陆天泽", role: "AI与后端负责人", lines: ["清华大学航空航天学院博士，黑客", "AI Infra 与 Agent 全栈，全球OpenClaw考试榜第一", "做最难的事并开源"] },
+      { name: "徐逸骁", role: "", lines: [] },
+      { name: "松泉", role: "", lines: [] },
+      { name: "麦子豪", role: "视觉设计负责人", lines: ["清华大学美术学院视觉传达设计系", "最年轻GGAC金奖提名得主，CA、BIBF短名单得主", "研究方向：概念设计、平面设计、当代艺术、数字媒体", "让美成为AGI的原生语言"] },
+      { name: "施昱全", role: "", lines: [] },
+      { name: "范智翔", role: "", lines: [] },
+      { name: "巩沁楠", role: "产品与交互负责人", lines: ["清华大学美术学院信息设计系", "独立游戏开发方向，GameJam连续得奖主", "像苹果一样重新定义交互"] }
+    ],
+    en: [
+      { name: "Wu Shanzheng", role: "CEO & Founder", lines: ["Master's in Aeronautics and Astronautics, Tsinghua University", "Multimodal human-computer interaction; chair of Tsinghua Makerspace Association", "Making sure ordinary people share in the benefits of AI"] },
+      { name: "Xu Lutianze", role: "AI & Backend Lead", lines: ["PhD in Aeronautics and Astronautics, Tsinghua University; hacker", "Full-stack AI Infra and Agents; first on the global OpenClaw exam leaderboard", "Taking on the hardest problems and open-sourcing the results"] },
+      { name: "Xu Yixiao", role: "", lines: [] },
+      { name: "Song Quan", role: "", lines: [] },
+      { name: "Mai Zihao", role: "Visual Design Lead", lines: ["Visual communication design, Tsinghua University Academy of Arts and Design", "Youngest GGAC Gold Award nominee; shortlisted for CA and BIBF", "Research: concept design, graphic design, contemporary art, and digital media", "Making beauty a native language for AGI"] },
+      { name: "Shi Yuquan", role: "", lines: [] },
+      { name: "Fan Zhixiang", role: "", lines: [] },
+      { name: "Gong Qinnan", role: "Product & Interaction Lead", lines: ["Information design, Tsinghua University Academy of Arts and Design", "Independent game development; repeated GameJam award winner", "Redefining interaction like Apple"] }
+    ]
+  };
+
+  const teamPositions = Array.from({ length: 8 }, (_, index) => {
+    const angle = -Math.PI / 2 + index * (Math.PI / 4);
+    return {
+      left: `${50 + 22 * Math.cos(angle)}%`,
+      top: `${50 + 33 * Math.sin(angle)}%`
+    };
+  });
+
+  let locale = loadLocale();
+  let activeSection = getSectionFromHash() || "ideal";
+  let slideIndex = 0;
+  let teamDetailOpen = false;
+  let teamMemberIndex = 0;
+  let contactDraft = "";
+  let introPhase = "animating";
+  let orbitAnimationFrame = null;
+  let wheelLock = false;
+  let wheelAccumulator = 0;
+  let touchStartY = null;
+  let suppressClickUntil = 0;
+  let languageChosen = window.localStorage.getItem("clean-slate-language-chosen") === "1";
+  let languageRevealTimer = null;
+  let typingBuffer = "";
+  let typingTimer = null;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const navSlots = [-2, -1, 0, 1, 2];
+  const navLevels = {
+    0: { scale: 1.08, opacity: 1, lift: "-4px" },
+    1: { scale: 0.93, opacity: 0.72, lift: "0px" },
+    2: { scale: 0.8, opacity: 0.36, lift: "7px" }
+  };
+  const navTransitionDuration = 520;
+  const NAV_STATE = Object.freeze({ IDLE: "idle", MOVING: "moving" });
+  const TEAM_STATE = Object.freeze({ ROSTER: "roster", OPENING: "opening", DETAIL: "detail", CLOSING: "closing" });
+  let navRenderedSection = null;
+  let navAnimationState = NAV_STATE.IDLE;
+  let navTransitionTarget = null;
+  let navQueuedSection = activeSection;
+  let navAnimations = [];
+  let teamTransitionState = TEAM_STATE.ROSTER;
+  let teamTransitionToken = 0;
+  let teamTransitionTimer = null;
+  let teamTransitionResolve = null;
+  let teamFlightAnimation = null;
+  let teamOrbitAngle = 0;
+  const baseStageWidth = 990;
+  const baseStageHeight = 620;
+  const maxStageScale = 4 / 3;
+
+  function syncStageScale() {
+    if (!stage || !stageFrame) return;
+    const viewportWidth = Math.max(document.documentElement.clientWidth || window.innerWidth, 1);
+    const viewportHeight = Math.max(document.documentElement.clientHeight || window.innerHeight, 1);
+    const availableWidth = Math.max(viewportWidth - 50, 1);
+    const availableHeight = Math.max(viewportHeight - 48, 1);
+    const fitScale = Math.min(availableWidth / baseStageWidth, availableHeight / baseStageHeight);
+    const scale = Math.max(0.01, Math.min(maxStageScale, fitScale));
+    stageFrame.style.width = `${baseStageWidth * scale}px`;
+    stageFrame.style.height = `${baseStageHeight * scale}px`;
+    stage.style.transform = `scale(${scale})`;
+  }
+
+  function loadLocale() {
+    const saved = window.localStorage.getItem("clean-slate-locale");
+    return saved === "en" || saved === "zh" ? saved : "zh";
+  }
+
+  function getSectionFromHash() {
+    const candidate = window.location.hash.replace(/^#/, "");
+    return sections.includes(candidate) ? candidate : null;
+  }
+
+  function navOrder() {
+    return sections;
+  }
+
+  function currentSlides() {
+    if (activeSection === "team") {
+      return [{ type: "team-roster" }];
+    }
+    if (activeSection === "contact") {
+      return [{ type: "contact" }];
+    }
+    return copy[locale].slides[activeSection] || [];
+  }
+
+  function announce(message) {
+    const node = document.querySelector("#interaction-hint");
+    if (!node) return;
+    node.textContent = message;
+  }
+
+  function pageAnnouncement(section, page) {
+    return locale === "zh"
+      ? `${sectionLabels[locale][section]}，第 ${page} 页`
+      : `${sectionLabels[locale][section]}, page ${page}`;
+  }
+
+  function syncStaticLabels() {
+    const labels = copy[locale].ui;
+    document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+    document.querySelector(".site-shell")?.setAttribute("aria-label", labels.mainAria);
+    document.querySelector("#intro-screen")?.setAttribute("aria-label", labels.introAria);
+    languageHotspot.setAttribute("aria-label", labels.languageHotspotAria);
+    contentZone.setAttribute("aria-label", labels.contentAria);
+    navZone.setAttribute("aria-label", labels.navAria);
+    introHint.textContent = labels.introHint;
+    const interactionHint = document.querySelector("#interaction-hint");
+    if (interactionHint) interactionHint.textContent = labels.interactionHint;
+  }
+
+  function navigationStep() {
+    const trackWidth = navTrack.clientWidth || 840;
+    return Math.min(174, Math.max(82, trackWidth / 5));
+  }
+
+  function applyNavigationSlot(button, slot, step) {
+    const level = navLevels[Math.abs(slot)];
+    button.dataset.slot = String(slot);
+    button.dataset.offset = String(slot);
+    button.style.setProperty("--shift", `${slot * step}px`);
+    button.style.setProperty("--scale", level.scale);
+    button.style.setProperty("--opacity", level.opacity);
+    button.style.setProperty("--lift", level.lift);
+    button.style.zIndex = String(3 - Math.abs(slot));
+  }
+
+  function ensureNavigationButtons() {
+    const buttons = [...navTrack.querySelectorAll(".nav-link")];
+    while (buttons.length < navSlots.length) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "nav-link";
+      button.addEventListener("click", () => {
+        if (button.dataset.section) setSection(button.dataset.section);
+      });
+      navTrack.appendChild(button);
+      buttons.push(button);
+    }
+    return buttons.slice(0, navSlots.length).map((button, index) => {
+      button.dataset.section = sections[index];
+      button.textContent = sectionLabels[locale][sections[index]];
+      return button;
+    });
+  }
+
+  function normalizeNavigationDelta(fromIndex, toIndex, length) {
+    const rawDelta = toIndex - fromIndex;
+    if (rawDelta > length / 2) return rawDelta - length;
+    if (rawDelta < -length / 2) return rawDelta + length;
+    return rawDelta;
+  }
+
+  function visualNavigationSection() {
+    return navAnimationState === NAV_STATE.MOVING
+      ? navTransitionTarget
+      : (navRenderedSection || activeSection);
+  }
+
+  function navigationSlot(section, centerSection) {
+    const order = navOrder();
+    return normalizeNavigationDelta(order.indexOf(centerSection), order.indexOf(section), order.length);
+  }
+
+  function navigationTransform(slot, step) {
+    const level = navLevels[Math.abs(slot)];
+    return `translateX(calc(-50% + ${slot * step}px)) translateY(${level.lift}) scale(${level.scale})`;
+  }
+
+  function syncNavigationButtons(buttons, centerSection, step) {
+    buttons.forEach((button) => {
+      const section = button.dataset.section;
+      const slot = navigationSlot(section, centerSection);
+      button.textContent = sectionLabels[locale][section];
+      button.setAttribute("aria-current", section === centerSection ? "page" : "false");
+      applyNavigationSlot(button, slot, step);
+      button.classList.remove("nav-link--edge-fade", "nav-link--repositioning");
+    });
+  }
+
+  function refreshNavigationLabels(buttons) {
+    const visualSection = visualNavigationSection();
+    buttons.forEach((button) => {
+      button.textContent = sectionLabels[locale][button.dataset.section];
+      button.setAttribute("aria-current", button.dataset.section === visualSection ? "page" : "false");
+    });
+  }
+
+  async function startNavigationTransition() {
+    if (navAnimationState !== NAV_STATE.IDLE || navRenderedSection === navQueuedSection) return;
+    const buttons = ensureNavigationButtons();
+    const step = navigationStep();
+    const targetSection = navQueuedSection;
+    navTransitionTarget = targetSection;
+    navAnimationState = NAV_STATE.MOVING;
+    navTrack.classList.add("nav-track--animating");
+
+    navAnimations = buttons.map((button) => {
+      const section = button.dataset.section;
+      const fromSlot = Number(button.dataset.slot);
+      const toSlot = navigationSlot(section, targetSection);
+      const fromLevel = navLevels[Math.abs(fromSlot)];
+      const toLevel = navLevels[Math.abs(toSlot)];
+      const wrapped = Math.abs(toSlot - fromSlot) > 2;
+      const fromTransform = navigationTransform(fromSlot, step);
+      const toTransform = navigationTransform(toSlot, step);
+      button.setAttribute("aria-current", section === targetSection ? "page" : "false");
+      applyNavigationSlot(button, toSlot, step);
+
+      if (reduceMotion.matches || typeof button.animate !== "function") return null;
+      const keyframes = wrapped
+        ? [
+            { transform: fromTransform, opacity: fromLevel.opacity, offset: 0 },
+            { transform: fromTransform, opacity: 0, offset: 0.38 },
+            { transform: toTransform, opacity: 0, offset: 0.62 },
+            { transform: toTransform, opacity: toLevel.opacity, offset: 1 }
+          ]
+        : [
+            { transform: fromTransform, opacity: fromLevel.opacity },
+            { transform: toTransform, opacity: toLevel.opacity }
+          ];
+      return button.animate(keyframes, {
+        duration: navTransitionDuration,
+        easing: wrapped ? "ease-in-out" : "cubic-bezier(0.22, 0.75, 0.25, 1)",
+        fill: "both"
+      });
+    }).filter(Boolean);
+
+    await Promise.all(navAnimations.map((animation) => animation.finished.catch(() => undefined)));
+    navAnimations.forEach((animation) => animation.cancel());
+    navAnimations = [];
+    navRenderedSection = targetSection;
+    navTransitionTarget = null;
+    navAnimationState = NAV_STATE.IDLE;
+    navTrack.classList.remove("nav-track--animating");
+    syncNavigationButtons(buttons, navRenderedSection, step);
+    if (navRenderedSection !== navQueuedSection) startNavigationTransition();
+  }
+
+  function renderNavigation() {
+    const buttons = ensureNavigationButtons();
+    const step = navigationStep();
+    navQueuedSection = activeSection;
+    refreshNavigationLabels(buttons);
+
+    if (navRenderedSection === null) {
+      navRenderedSection = activeSection;
+      syncNavigationButtons(buttons, navRenderedSection, step);
+      return;
+    }
+    if (navAnimationState === NAV_STATE.IDLE) startNavigationTransition();
+  }
+
+  function renderContent(direction) {
+    const slides = currentSlides();
+    if (!slides.length) return;
+    resetTeamTransition();
+    slideIndex = Math.max(0, Math.min(slideIndex, slides.length - 1));
+    const slide = slides[slideIndex];
+    const next = document.createElement("div");
+    next.className = `content-view content-view--${activeSection}${activeSection === "team" ? " content-view--team" : ""}`;
+    next.id = "content-view";
+    next.setAttribute("aria-live", "polite");
+    next.innerHTML = slideMarkup(slide);
+    if (direction && !reduceMotion.matches) {
+      next.style.setProperty("--slide-direction", direction > 0 ? "1" : "-1");
+    }
+    stopTeamOrbit();
+    contentView.replaceWith(next);
+    contentView = next;
+    bindDynamicContent();
+    if (activeSection === "team" && teamDetailOpen) showTeamDetailInstant(teamMemberIndex);
+    else if (activeSection === "team" && introPhase === "open") startTeamOrbit();
+  }
+
+  function slideMarkup(slide) {
+    if (slide.type === "ideal-statement" || slide.type === "work-scenario") {
+      const className = locale === "en" ? "manifesto manifesto--english" : "manifesto";
+      const lines = slide.type === "ideal-statement" ? copy[locale].idealStatement : copy[locale].workScenario;
+      return `<div class="${className}">${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div>`;
+    }
+    if (slide.type === "contact") {
+      const inputState = contactDraft.trim() ? " contact-canvas--has-input" : "";
+      return `<div class="contact-canvas${inputState}" contenteditable="true" role="textbox" aria-label="${escapeHtml(copy[locale].contactAria)}" dir="auto">${escapeHtml(contactDraft)}</div>`;
+    }
+    if (slide.type === "team-roster") {
+      return `<section class="team-scene" data-team-state="roster"><div class="team-roster" aria-label="${locale === "zh" ? "团队成员" : "Team members"}"><div class="team-orbit">${teamMembers[locale].map((member, index) => {
+        const position = teamPositions[index];
+        const ariaLabel = member.role
+          ? `${member.name}${locale === "zh" ? "，" : ", "}${member.role}`
+          : member.name;
+        return `<button class="team-member" type="button" data-member-index="${index}" style="left:${position.left};top:${position.top}" aria-label="${escapeHtml(ariaLabel)}"><span>${escapeHtml(member.name)}</span></button>`;
+      }).join("")}</div></div><div class="team-detail-layer" aria-hidden="true"></div></section>`;
+    }
+    if (slide.type === "member-detail") {
+      return memberDetailMarkup(slide.member);
+    }
+    const links = (slide.links || [])
+      .map((link) => {
+        const download = link.download ? ` download="${escapeHtml(link.download)}"` : "";
+        const external = link.href.startsWith("http") ? ` target="_blank" rel="noreferrer"` : "";
+        return `<a class="slide__link" href="${escapeHtml(link.href)}"${download}${external}>${escapeHtml(link.label)}</a>`;
+      })
+      .join("");
+    const title = slide.title ? `<h1 class="slide__title">${escapeHtml(slide.title)}</h1>` : "";
+    const body = slide.body ? `<p class="slide__body">${escapeHtml(slide.body)}</p>` : "";
+    return `<article class="slide">${title}${body}${links ? `<div class="slide__links">${links}</div>` : ""}</article>`;
+  }
+
+  function memberDetailMarkup(member) {
+    const role = member.role ? `<p class="member-detail__role">${escapeHtml(member.role)}</p>` : "";
+    const lines = member.lines.length ? `<div class="member-detail__lines">${member.lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div>` : "";
+    return `<article class="member-detail"><h1 class="slide__title member-detail__name" tabindex="-1">${escapeHtml(member.name)}</h1>${role}${lines}</article>`;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function bindDynamicContent() {
+    contentView.querySelectorAll(".team-member").forEach((memberButton) => {
+      memberButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openMember(Number(memberButton.dataset.memberIndex));
+      });
+    });
+    const contactCanvas = contentView.querySelector(".contact-canvas");
+    if (contactCanvas) {
+      contactCanvas.addEventListener("input", () => {
+        contactDraft = contactCanvas.textContent;
+        contactCanvas.classList.toggle("contact-canvas--has-input", Boolean(contactCanvas.textContent.trim()));
+      });
+      contactCanvas.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" || event.shiftKey) return;
+        event.preventDefault();
+        const message = contactCanvas.textContent.trim();
+        if (!message) return;
+        contactDraft = "";
+        stepSection(1);
+      });
+    }
+  }
+
+  function waitForTeamTransition(duration, token) {
+    if (reduceMotion.matches || duration <= 0) return Promise.resolve(token === teamTransitionToken);
+    return new Promise((resolve) => {
+      teamTransitionResolve = resolve;
+      teamTransitionTimer = window.setTimeout(() => {
+        teamTransitionTimer = null;
+        teamTransitionResolve = null;
+        resolve(token === teamTransitionToken);
+      }, duration);
+    });
+  }
+
+  function nextPaint() {
+    return new Promise((resolve) => {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+    });
+  }
+
+  function resetTeamTransition() {
+    teamTransitionToken += 1;
+    if (teamTransitionTimer !== null) {
+      window.clearTimeout(teamTransitionTimer);
+      teamTransitionTimer = null;
+    }
+    if (teamTransitionResolve) {
+      teamTransitionResolve(false);
+      teamTransitionResolve = null;
+    }
+    if (teamFlightAnimation) {
+      teamFlightAnimation.cancel();
+      teamFlightAnimation = null;
+    }
+    stage.querySelectorAll(".team-name-flight").forEach((node) => node.remove());
+    contentView?.querySelectorAll(".team-member > span, .member-detail__name").forEach((node) => {
+      node.style.removeProperty("visibility");
+    });
+    teamTransitionState = TEAM_STATE.ROSTER;
+    stopTeamOrbit();
+  }
+
+  function mountTeamDetail(scene, index) {
+    const layer = scene.querySelector(".team-detail-layer");
+    const member = teamMembers[locale][index];
+    if (!layer || !member) return null;
+    layer.innerHTML = memberDetailMarkup(member);
+    const title = layer.querySelector(".member-detail__name");
+    title.style.visibility = "hidden";
+    layer.classList.add("is-mounted");
+    layer.classList.remove("is-revealed");
+    return { layer, title };
+  }
+
+  function toStagePoint(element) {
+    const rect = element.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    const scaleX = stageRect.width / stage.offsetWidth;
+    const scaleY = stageRect.height / stage.offsetHeight;
+    return {
+      x: (rect.left + rect.width / 2 - stageRect.left) / scaleX,
+      y: (rect.top + rect.height / 2 - stageRect.top) / scaleY
+    };
+  }
+
+  function fontMetrics(element) {
+    const style = window.getComputedStyle(element);
+    const number = (value, fallback) => Number.parseFloat(value) || fallback;
+    return {
+      fontFamily: style.fontFamily,
+      fontWeight: style.fontWeight,
+      fontSize: number(style.fontSize, 17),
+      lineHeight: number(style.lineHeight, number(style.fontSize, 17) * 1.2),
+      letterSpacing: number(style.letterSpacing, 0),
+      color: style.color
+    };
+  }
+
+  async function flyTeamName(fromElement, toElement, token) {
+    const start = toStagePoint(fromElement);
+    const end = toStagePoint(toElement);
+    const fromFont = fontMetrics(fromElement);
+    const toFont = fontMetrics(toElement);
+    const ghost = document.createElement("span");
+    ghost.className = "team-name-flight";
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.textContent = fromElement.textContent;
+    Object.assign(ghost.style, {
+      left: `${start.x}px`,
+      top: `${start.y}px`,
+      color: fromFont.color,
+      fontFamily: fromFont.fontFamily,
+      fontWeight: fromFont.fontWeight,
+      fontSize: `${fromFont.fontSize}px`,
+      lineHeight: `${fromFont.lineHeight}px`,
+      letterSpacing: `${fromFont.letterSpacing}px`
+    });
+    stage.appendChild(ghost);
+    fromElement.style.visibility = "hidden";
+    toElement.style.visibility = "hidden";
+
+    if (reduceMotion.matches || typeof ghost.animate !== "function") {
+      Object.assign(ghost.style, {
+        left: `${end.x}px`,
+        top: `${end.y}px`,
+        fontSize: `${toFont.fontSize}px`,
+        lineHeight: `${toFont.lineHeight}px`,
+        letterSpacing: `${toFont.letterSpacing}px`
+      });
+      return token === teamTransitionToken;
+    }
+
+    teamFlightAnimation = ghost.animate([
+      {
+        left: `${start.x}px`, top: `${start.y}px`,
+        fontSize: `${fromFont.fontSize}px`, lineHeight: `${fromFont.lineHeight}px`, letterSpacing: `${fromFont.letterSpacing}px`
+      },
+      {
+        left: `${end.x}px`, top: `${end.y}px`,
+        fontSize: `${toFont.fontSize}px`, lineHeight: `${toFont.lineHeight}px`, letterSpacing: `${toFont.letterSpacing}px`
+      }
+    ], {
+      duration: 720,
+      easing: "cubic-bezier(0.22, 0.75, 0.25, 1)",
+      fill: "forwards"
+    });
+    await teamFlightAnimation.finished.catch(() => undefined);
+    teamFlightAnimation = null;
+    if (token !== teamTransitionToken) ghost.remove();
+    return token === teamTransitionToken;
+  }
+
+  function finishTeamNameFlight(revealedElement) {
+    revealedElement.style.removeProperty("visibility");
+    stage.querySelector(".team-name-flight")?.remove();
+  }
+
+  async function openMember(index) {
+    if (!teamMembers[locale][index] || teamTransitionState !== TEAM_STATE.ROSTER) return;
+    const scene = contentView.querySelector(".team-scene");
+    const selected = contentView.querySelector(`[data-member-index="${index}"]`);
+    const sourceName = selected?.querySelector("span");
+    if (!scene || !selected || !sourceName) return;
+
+    const token = ++teamTransitionToken;
+    teamTransitionState = TEAM_STATE.OPENING;
+    teamMemberIndex = index;
+    slideIndex = 0;
+    stopTeamOrbit();
+    const detail = mountTeamDetail(scene, index);
+    if (!detail) return;
+    selected.classList.add("team-member--selected");
+    scene.classList.add("is-opening");
+    scene.dataset.teamState = TEAM_STATE.OPENING;
+    await nextPaint();
+    if (token !== teamTransitionToken) return;
+    const completed = await flyTeamName(sourceName, detail.title, token);
+    if (!completed) return;
+
+    finishTeamNameFlight(detail.title);
+    scene.classList.add("is-detail");
+    scene.classList.remove("is-opening");
+    scene.dataset.teamState = TEAM_STATE.DETAIL;
+    scene.querySelector(".team-roster")?.setAttribute("aria-hidden", "true");
+    detail.layer.setAttribute("aria-hidden", "false");
+    teamDetailOpen = true;
+    teamTransitionState = TEAM_STATE.DETAIL;
+    window.requestAnimationFrame(() => {
+      if (token === teamTransitionToken) detail.layer.classList.add("is-revealed");
+    });
+    detail.title.focus({ preventScroll: true });
+    announce(locale === "zh"
+      ? `${teamMembers[locale][index].name}，成员详情`
+      : `${teamMembers[locale][index].name}, member detail`);
+  }
+
+  function showTeamDetailInstant(index) {
+    const scene = contentView.querySelector(".team-scene");
+    const selected = contentView.querySelector(`[data-member-index="${index}"]`);
+    const sourceName = selected?.querySelector("span");
+    if (!scene || !selected || !sourceName) return;
+    const detail = mountTeamDetail(scene, index);
+    if (!detail) return;
+    selected.classList.add("team-member--selected");
+    sourceName.style.visibility = "hidden";
+    detail.title.style.removeProperty("visibility");
+    scene.classList.add("is-detail");
+    scene.dataset.teamState = TEAM_STATE.DETAIL;
+    scene.querySelector(".team-roster")?.setAttribute("aria-hidden", "true");
+    detail.layer.setAttribute("aria-hidden", "false");
+    detail.layer.classList.add("is-revealed");
+    teamTransitionState = TEAM_STATE.DETAIL;
+  }
+
+  async function closeMember() {
+    if (!teamDetailOpen || teamTransitionState !== TEAM_STATE.DETAIL) return false;
+    const scene = contentView.querySelector(".team-scene");
+    const layer = scene?.querySelector(".team-detail-layer");
+    const title = layer?.querySelector(".member-detail__name");
+    const selected = scene?.querySelector(`[data-member-index="${teamMemberIndex}"]`);
+    const destinationName = selected?.querySelector("span");
+    if (!scene || !layer || !title || !selected || !destinationName) return false;
+
+    const token = ++teamTransitionToken;
+    teamTransitionState = TEAM_STATE.CLOSING;
+    scene.dataset.teamState = TEAM_STATE.CLOSING;
+    layer.classList.remove("is-revealed");
+    if (!await waitForTeamTransition(300, token)) return false;
+
+    scene.classList.add("is-closing");
+    scene.classList.remove("is-detail");
+    scene.querySelector(".team-roster")?.setAttribute("aria-hidden", "false");
+    // Give the roster's hidden state one paint before the return fade begins.
+    // Without this boundary, the two classes can collapse into one frame.
+    await nextPaint();
+    if (token !== teamTransitionToken) return false;
+    const flight = flyTeamName(title, destinationName, token);
+    scene.classList.add("is-returning");
+    if (!await flight) return false;
+
+    finishTeamNameFlight(destinationName);
+    selected.classList.remove("team-member--selected");
+    scene.classList.remove("is-closing", "is-returning");
+    scene.dataset.teamState = TEAM_STATE.ROSTER;
+    layer.classList.remove("is-mounted");
+    layer.setAttribute("aria-hidden", "true");
+    layer.innerHTML = "";
+    teamDetailOpen = false;
+    teamTransitionState = TEAM_STATE.ROSTER;
+    startTeamOrbit();
+    announce(locale === "zh" ? "返回团队成员" : "Back to team members");
+    return true;
+  }
+
+  function applyTeamOrbit(orbit, members, angle) {
+    orbit.style.setProperty("--orbit-angle", `${angle}deg`);
+    members.forEach((member) => member.style.setProperty("--counter-angle", `${-angle}deg`));
+  }
+
+  function startTeamOrbit() {
+    const orbit = contentView.querySelector(".team-orbit");
+    if (!orbit || teamTransitionState !== TEAM_STATE.ROSTER) return;
+    stopTeamOrbit();
+    const members = [...orbit.querySelectorAll(".team-member")];
+    const startedAt = performance.now();
+    const baseAngle = teamOrbitAngle;
+    const duration = 60000;
+    applyTeamOrbit(orbit, members, baseAngle);
+
+    const tick = (now) => {
+      if (!document.body.contains(orbit) || activeSection !== "team" || teamTransitionState !== TEAM_STATE.ROSTER) return;
+      teamOrbitAngle = (baseAngle + ((now - startedAt) / duration) * 360) % 360;
+      applyTeamOrbit(orbit, members, teamOrbitAngle);
+      orbitAnimationFrame = window.requestAnimationFrame(tick);
+    };
+
+    orbitAnimationFrame = window.requestAnimationFrame(tick);
+  }
+
+  function stopTeamOrbit() {
+    if (orbitAnimationFrame !== null) {
+      window.cancelAnimationFrame(orbitAnimationFrame);
+      orbitAnimationFrame = null;
+    }
+  }
+
+  function updateHash() {
+    const nextHash = `#${activeSection}`;
+    if (window.location.hash !== nextHash) window.history.pushState({ section: activeSection }, "", nextHash);
+  }
+
+  function setSection(section, direction) {
+    if (!sections.includes(section)) return;
+    resetTeamTransition();
+    activeSection = section;
+    slideIndex = 0;
+    teamDetailOpen = false;
+    updateHash();
+    renderNavigation();
+    renderContent(direction);
+    announce(pageAnnouncement(section, 1));
+  }
+
+  function stepSection(direction) {
+    const order = navOrder();
+    const index = order.indexOf(activeSection);
+    const nextIndex = (index + direction + order.length) % order.length;
+    setSection(order[nextIndex], direction);
+  }
+
+  function stepSlide(direction) {
+    if (activeSection === "team" && teamTransitionState !== TEAM_STATE.ROSTER && teamTransitionState !== TEAM_STATE.DETAIL) return;
+    if (activeSection === "team" && teamDetailOpen) {
+      closeMember();
+      return;
+    }
+    const slides = currentSlides();
+    if (!slides.length) return;
+    const nextIndex = slideIndex + direction;
+    if (nextIndex >= 0 && nextIndex < slides.length) {
+      slideIndex = nextIndex;
+      renderContent(direction);
+      announce(pageAnnouncement(activeSection, slideIndex + 1));
+      return;
+    }
+    stepSection(direction);
+    if (direction < 0) {
+      slideIndex = currentSlides().length - 1;
+      renderContent(direction);
+    }
+  }
+
+  function handleWheel(event, region) {
+    event.preventDefault();
+    if (wheelLock) return;
+    wheelAccumulator += event.deltaY;
+    if (Math.abs(wheelAccumulator) < 24) return;
+    const direction = wheelAccumulator > 0 ? 1 : -1;
+    wheelAccumulator = 0;
+    wheelLock = true;
+    if (region === "nav") stepSection(direction);
+    else stepSlide(direction);
+    window.setTimeout(() => {
+      wheelLock = false;
+    }, 460);
+  }
+
+  function handleTouchStart(event) {
+    touchStartY = event.touches[0]?.clientY ?? null;
+  }
+
+  function handleTouchEnd(event) {
+    if (touchStartY === null) return;
+    const endY = event.changedTouches[0]?.clientY ?? touchStartY;
+    const delta = touchStartY - endY;
+    touchStartY = null;
+    if (Math.abs(delta) < 35 || wheelLock) return;
+    suppressClickUntil = Date.now() + 520;
+    wheelLock = true;
+    stepSlide(delta > 0 ? 1 : -1);
+    window.setTimeout(() => {
+      wheelLock = false;
+    }, 460);
+  }
+
+  function toggleLocale() {
+    locale = locale === "zh" ? "en" : "zh";
+    window.localStorage.setItem("clean-slate-locale", locale);
+    languageChosen = true;
+    window.localStorage.setItem("clean-slate-language-chosen", "1");
+    languageControl.classList.add("is-hidden");
+    languageControl.classList.remove("is-revealed");
+    syncStaticLabels();
+    document.title = copy[locale].pageTitle;
+    languageButton.textContent = copy[locale].languageButton;
+    languageButton.setAttribute("aria-label", copy[locale].languageAria);
+    renderNavigation();
+    renderContent();
+    announce(locale === "zh" ? "已切换为中文" : "Switched to English");
+  }
+
+  function revealLanguage(temporary) {
+    window.clearTimeout(languageRevealTimer);
+    languageControl.classList.remove("is-hidden");
+    languageControl.classList.add("is-revealed");
+    if (temporary && languageChosen) {
+      languageRevealTimer = window.setTimeout(() => {
+        languageControl.classList.remove("is-revealed");
+        languageControl.classList.add("is-hidden");
+      }, 2300);
+    }
+  }
+
+  function handleTyping(event) {
+    if (introPhase !== "open") return;
+    if (event.target.closest?.("input, textarea, [contenteditable='true']")) return;
+    if (event.key.length !== 1 || !/[a-zA-Z中]/.test(event.key)) return;
+    typingBuffer = `${typingBuffer}${event.key.toLowerCase()}`.slice(-3);
+    window.clearTimeout(typingTimer);
+    typingTimer = window.setTimeout(() => {
+      typingBuffer = "";
+    }, 800);
+    if (typingBuffer.endsWith("en")) {
+      if (locale !== "en") toggleLocale();
+      typingBuffer = "";
+    } else if (typingBuffer.endsWith("zh") || typingBuffer.endsWith("中")) {
+      if (locale !== "zh") toggleLocale();
+      typingBuffer = "";
+    }
+  }
+
+  function handleKeydown(event) {
+    if (introPhase !== "open") {
+      const isInputTrigger = event.key.length === 1 || [
+        "Enter", " ", "ArrowDown", "ArrowRight", "PageDown"
+      ].includes(event.key);
+      if (introPhase === "ready" && isInputTrigger && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        dismissIntro();
+      }
+      return;
+    }
+    if (event.target.closest?.("input, textarea, [contenteditable='true']")) return;
+    const directions = {
+      ArrowDown: 1,
+      PageDown: 1,
+      ArrowUp: -1,
+      PageUp: -1
+    };
+    if (event.key in directions) {
+      event.preventDefault();
+      if (wheelLock) return;
+      wheelLock = true;
+      stepSlide(directions[event.key]);
+      window.setTimeout(() => {
+        wheelLock = false;
+      }, 330);
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      setSection(navOrder()[0], -1);
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      setSection(navOrder()[navOrder().length - 1], 1);
+    }
+  }
+
+  function dismissIntro() {
+    if (introPhase !== "ready") return;
+    introPhase = "open";
+    if (activeSection === "team" && !teamDetailOpen) startTeamOrbit();
+    stage.classList.add("intro-leaving");
+    stage.classList.remove("intro-active");
+    introScreen.classList.add("is-dismissed");
+    introScreen.setAttribute("aria-hidden", "true");
+    window.setTimeout(() => {
+      introScreen.hidden = true;
+      stage.classList.remove("intro-leaving");
+    }, reduceMotion.matches ? 0 : 820);
+    announce(locale === "zh" ? "开场完成，点击正文开始探索" : "Opening complete, click the page to explore");
+  }
+
+  function initializeIntro() {
+    stage.classList.add("intro-active");
+    introScreen.addEventListener("click", () => dismissIntro());
+    introScreen.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      dismissIntro();
+    }, { passive: false });
+    introScreen.addEventListener("pointerdown", () => {
+      if (introPhase === "ready") dismissIntro();
+    });
+    const animationDuration = reduceMotion.matches ? 900 : 2450;
+    window.setTimeout(() => {
+      if (introPhase !== "animating") return;
+      introPhase = "ready";
+      introScreen.classList.add("is-ready");
+      introHint.textContent = locale === "zh" ? "点击或输入以继续" : "Click or type to continue";
+    }, animationDuration);
+  }
+
+  function initialize() {
+    syncStageScale();
+    syncStaticLabels();
+    languageButton.textContent = copy[locale].languageButton;
+    languageButton.setAttribute("aria-label", copy[locale].languageAria);
+    if (languageChosen) languageControl.classList.add("is-hidden");
+    renderNavigation();
+    renderContent();
+    initializeIntro();
+
+    contentZone.addEventListener("wheel", (event) => handleWheel(event, "content"), { passive: false });
+    navZone.addEventListener("wheel", (event) => handleWheel(event, "nav"), { passive: false });
+    contentZone.addEventListener("touchstart", handleTouchStart, { passive: true });
+    contentZone.addEventListener("touchend", handleTouchEnd, { passive: true });
+    contentZone.addEventListener("click", (event) => {
+      if (Date.now() < suppressClickUntil) return;
+      if (event.target.closest("a, .contact-canvas")) return;
+      if (wheelLock) return;
+      if (activeSection === "team" && teamTransitionState !== TEAM_STATE.ROSTER && teamTransitionState !== TEAM_STATE.DETAIL) return;
+      if (activeSection === "team" && teamDetailOpen) {
+        closeMember();
+        return;
+      }
+      wheelLock = true;
+      stepSlide(1);
+      window.setTimeout(() => {
+        wheelLock = false;
+      }, 330);
+    });
+    window.addEventListener("resize", syncStageScale);
+    window.addEventListener("keydown", handleKeydown);
+    window.addEventListener("keydown", handleTyping);
+    window.addEventListener("popstate", () => {
+      const section = getSectionFromHash();
+      if (section) setSection(section);
+    });
+    window.addEventListener("hashchange", () => {
+      const section = getSectionFromHash();
+      if (section) setSection(section);
+    });
+    languageButton.addEventListener("click", toggleLocale);
+    languageHotspot.addEventListener("pointerenter", () => revealLanguage(true));
+    languageHotspot.addEventListener("focus", () => revealLanguage(true));
+    languageHotspot.addEventListener("click", (event) => {
+      if (event.target === languageHotspot) revealLanguage(true);
+    });
+    languageHotspot.addEventListener("keydown", (event) => {
+      if (event.target !== languageHotspot) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        revealLanguage(true);
+      }
+    });
+    window.setTimeout(() => {
+      if (!languageChosen) {
+        languageChosen = true;
+        languageControl.classList.add("is-hidden");
+      }
+    }, 60000);
+  }
+
+  initialize();
+})();
+
+    </script>
+</body>
+</html>

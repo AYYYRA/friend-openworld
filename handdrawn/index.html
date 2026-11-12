@@ -1231,6 +1231,188 @@ html.js .rv:not(.is-in){ opacity:0; transform:translateY(22px); }
 }
 
 </style>
+<!-- boot-veil:begin -->
+<script>
+/* 统一加载遮罩：资源就绪后才放行渲染，避免网络波动导致的提前渲染。
+   纯内联、无外部依赖；放在 <head> 末尾、<body> 之前注入。
+   放行条件：window load + document.fonts.ready + 所有 img decode 完成。
+   兜底：最长 8000ms 强制放行，绝不把页面锁死。 */
+(function () {
+  var CONFIG = {
+    bg: '#ffffff',
+    fg: '#111111',
+    accent: 'rgba(17,17,17,.14)',
+    label: 'loading',
+    minShow: 700,   // 最短展示时长(ms)，避免一闪而过
+    timeout: 12000    // 兜底放行(ms)
+  };
+
+  var root = document.documentElement;
+  var start = Date.now();
+  var done = false;
+  var frozen = [];
+
+  /* 注入样式：遮罩层本身极轻薄，不依赖任何图片或字体 */
+  var css = document.createElement('style');
+  css.id = 'boot-veil-style';
+  css.textContent =
+    'html.__boot{overflow:hidden!important;}' +
+    'html.__boot body{overflow:hidden!important;}' +
+    '#boot-veil{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;' +
+      'justify-content:center;flex-direction:column;gap:26px;background:' + CONFIG.bg + ';' +
+      'color:' + CONFIG.fg + ';font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;' +
+      'font-weight:300;-webkit-font-smoothing:antialiased;' +
+      'transition:opacity .62s cubic-bezier(.22,.75,.25,1);will-change:opacity;}' +
+    '#boot-veil.__gone{opacity:0;pointer-events:none;}' +
+    '#boot-veil .__mark{font-size:clamp(30px,5vw,44px);letter-spacing:-.03em;line-height:1;' +
+      'opacity:.92;transition:opacity .5s ease;}' +
+    '#boot-veil .__mark i{font-style:normal;opacity:.45;}' +
+    '#boot-veil .__track{position:relative;width:min(190px,42vw);height:1px;' +
+      'background:' + CONFIG.accent + ';overflow:hidden;}' +
+    '#boot-veil .__bar{position:absolute;inset:0 100% 0 0;background:' + CONFIG.fg + ';' +
+      'transition:right .42s cubic-bezier(.22,.75,.25,1);}' +
+    '#boot-veil .__label{font-size:11px;letter-spacing:.22em;text-transform:uppercase;opacity:.5;}' +
+    '@media (prefers-reduced-motion:reduce){#boot-veil,#boot-veil .__bar{transition-duration:.01ms!important;}}';
+
+  /* 遮罩 DOM 必须在 <body> 出现前就绪，否则可能先闪一帧页面内容 */
+  var veil = document.createElement('div');
+  veil.id = 'boot-veil';
+  veil.setAttribute('role', 'status');
+  veil.setAttribute('aria-live', 'polite');
+  veil.setAttribute('aria-label', CONFIG.label);
+  veil.innerHTML =
+    '<div class="__mark">friend<i>.</i></div>' +
+    '<div class="__track"><div class="__bar"></div></div>' +
+    '<div class="__label">' + CONFIG.label + '</div>';
+
+  root.classList.add('__boot');
+  (document.head || root).appendChild(css);
+
+  /* 进度：粗粒度分段，不假装精确，只表达"在动" */
+  var bar = veil.querySelector('.__bar');
+  var pct = 0;
+  function setProgress(p) {
+    pct = Math.max(pct, Math.min(p, 0.94)); // 收尾前最多到 94%
+    bar.style.right = (100 - pct * 100) + '%';
+  }
+  setProgress(0.12);
+
+  /* 加载期间冻结 CSS 动画，避免动画在遮罩后面跑完、揭幕时已经是尾部状态 */
+  function freeze() {
+    if (!document.getAnimations) return;
+    var list = document.getAnimations();
+    for (var i = 0; i < list.length; i++) {
+      var a = list[i];
+      try {
+        if (a.playState === 'running' || a.playState === 'pending') {
+          a.pause();
+          frozen.push(a);
+        }
+      } catch (e) { /* 单个动画不可控就跳过，不影响整体 */ }
+    }
+  }
+  function thaw() {
+    for (var i = 0; i < frozen.length; i++) {
+      try { frozen[i].play(); } catch (e) { /* 已失效的动画忽略 */ }
+    }
+    frozen.length = 0;
+  }
+
+  /* 等待所有图片解码完成；decode() 失败也算完成，不能因为一张图卡住整页 */
+  function imagesReady() {
+    var imgs = document.images ? Array.prototype.slice.call(document.images) : [];
+    if (!imgs.length) return Promise.resolve();
+    return Promise.all(imgs.map(function (img) {
+      if (img.complete && img.naturalWidth > 0) {
+        return (img.decode ? img.decode() : Promise.resolve()).catch(function () {});
+      }
+      return new Promise(function (resolve) {
+        img.addEventListener('load', function () {
+          (img.decode ? img.decode() : Promise.resolve()).then(resolve).catch(resolve);
+        }, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      });
+    }));
+  }
+
+  function fontsReady() {
+    if (!document.fonts || !document.fonts.ready) return Promise.resolve();
+    return Promise.resolve(document.fonts.ready).catch(function () {});
+  }
+
+  function release(reason) {
+    if (done) return;
+    done = true;
+
+    var wait = Math.max(0, CONFIG.minShow - (Date.now() - start));
+    setTimeout(function () {
+      setProgress(1);
+      veil.classList.add('__gone');
+      root.classList.remove('__boot');
+      thaw();                                  // 让页面自己从头开始播
+      setTimeout(function () {
+        if (veil.parentNode) veil.parentNode.removeChild(veil);
+        if (css.parentNode) css.parentNode.removeChild(css);
+        root.classList.remove('__boot');
+      }, 680);
+      try {
+        window.dispatchEvent(new CustomEvent('boot:ready', { detail: { reason: reason } }));
+      } catch (e) { /* 老浏览器忽略 */ }
+    }, wait);
+  }
+
+  /* 逐段推进，让进度条有真实节奏而不是空转 */
+  var steps = [0.32, 0.58, 0.79];
+  var stepTimer = setInterval(function () {
+    var next = steps.shift();
+    if (next === undefined) return clearInterval(stepTimer);
+    setProgress(next);
+  }, 260);
+
+  function whenReady() {
+    freeze();
+    var ticker = setInterval(freeze, 120);   // 期间新产生的动画也一并冻结
+    Promise.all([fontsReady(), imagesReady()])
+      .then(function () { clearInterval(ticker); setProgress(0.94); release('loaded'); })
+      .catch(function () { clearInterval(ticker); release('fallback'); });
+  }
+
+  // DOM 就绪后就开始冻结（此时 CSS 动画已存在，但尚未跑远）
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', freeze, { once: true });
+  } else {
+    freeze();
+  }
+
+  if (document.readyState === 'complete') {
+    // 从缓存回来时 load 可能早已触发
+    whenReady();
+  } else {
+    window.addEventListener('load', whenReady, { once: true });
+  }
+
+  // 兜底：任何异常都不允许把页面锁死
+  setTimeout(function () { clearInterval(stepTimer); release('timeout'); }, CONFIG.timeout);
+
+  // 把遮罩挂到 body 上。脚本在 <head> 里执行时 body 还不存在，等解析到即可。
+  function mount() {
+    if (document.body) {
+      document.body.insertBefore(veil, document.body.firstChild);
+      return true;
+    }
+    return false;
+  }
+  if (!mount()) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', mount, { once: true });
+    } else {
+      mount();
+    }
+  }
+})();
+
+</script>
+<!-- boot-veil:end -->
 </head>
 <body class="is-loading">
 
