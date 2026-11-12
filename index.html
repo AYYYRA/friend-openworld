@@ -48,25 +48,8 @@
         font-size:12px; color:var(--muted)}
   .arrow{transition:transform .28s var(--ease)}
   a.card:hover .arrow{transform:translateX(4px)}
-  .swatch{height:86px; border-radius:8px; display:flex; align-items:center; justify-content:center;
-          font-size:12px; color:var(--muted); letter-spacing:.08em}
-  .swatch.ink{background:#fff; border:1px dashed rgba(21,21,21,.28)}
-  .swatch.gray{background:#9f9f9f}
   footer{margin-top:52px; font-size:12px; color:var(--muted); text-align:center; line-height:1.9}
   footer a{color:inherit}
-  .banner{
-    max-width:960px; width:100%; margin:0 0 34px;
-    padding:16px 20px; border:1px solid rgba(180,120,0,.34); border-radius:10px;
-    background:rgba(255,196,64,.13); color:#7a5200;
-    font-size:14px; line-height:1.7; letter-spacing:.01em;
-  }
-  .banner strong{font-weight:600}
-  .badge{
-    display:inline-block; margin-top:10px; padding:3px 9px; border-radius:999px;
-    background:rgba(180,120,0,.16); font-size:11.5px; letter-spacing:.06em;
-  }
-  .notice{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#a07600; margin:0 0 8px}
-  .meta .tagtext{color:#8a6a10}
   @media (prefers-reduced-motion:reduce){
     a.card, .arrow{transition:none}
     a.card:hover{transform:none}
@@ -262,18 +245,11 @@
     <p class="tagline">openworld · 官网两版过程稿对照</p>
   </header>
 
-  <div class="banner" role="note">
-    <strong>未启用的过程稿。</strong>以下两个页面是 friend 官网在设计探索阶段的历史版本，
-    从未上线、也不代表当前正式官网。仅作过程留档与方案对照之用，其中的文案、团队信息与联系方式均为占位或当时草稿。
-    <span class="badge">Provisional · 未启用</span>
-  </div>
-
   <main class="grid">
     <a class="card" href="./handdrawn/">
       <span class="kicker">Version A · 过程稿</span>
       <h2 class="title">手绘线稿 · 白纸版</h2>
       <p class="desc">黑色线稿插画、书册翻页、深色固定页脚与全局可点光标。交互最完整的一版，未启用。</p>
-      <div class="swatch ink">hand-drawn line art</div>
       <div class="meta"><span class="tagtext">未启用过程稿</span><span>friend. — your personal data wallet</span><span class="arrow">→</span></div>
     </a>
 
@@ -281,7 +257,6 @@
       <span class="kicker">Version B · 过程稿</span>
       <h2 class="title">白纸灰底 · 团队圆环版</h2>
       <p class="desc">灰底衬托白纸舞台，团队成员沿圆环排布，点击展开成员详情。带开场动画，未启用。</p>
-      <div class="swatch gray">#9f9f9f backdrop</div>
       <div class="meta"><span class="tagtext">未启用过程稿</span><span>openworld</span><span class="arrow">→</span></div>
     </a>
   </main>
